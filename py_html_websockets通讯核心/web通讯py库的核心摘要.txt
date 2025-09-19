@@ -1,0 +1,101 @@
+Python WebSocket 核心库通讯摘要
+核心功能概述
+该库提供基于 WebSocket 协议的客户端 - 服务器通讯能力，支持消息的发送、接收、存储和管理，采用异步 IO 模式实现高效网络通信。
+初始化与配置
+from websocket_protocol_core import WebSocketProtocolCore
+
+# 创建协议核心实例
+protocol = WebSocketProtocolCore()
+
+# 配置参数
+- 存储模式：内存存储(STORAGE_MODE=1)或磁盘存储(STORAGE_MODE=0)
+- 数据存储目录：默认"d ata"文件夹
+- 消息文件路径：data/received_messages.json
+核心接口说明
+1. 服务器管理
+# 启动服务器（需指定端口）
+await protocol.start_server(port)
+
+# 停止服务器
+await protocol.stop_server()
+
+# 验证端口有效性
+valid, msg = protocol.validate_port(port, is_target=False)
+
+2. 连接管理
+# 获取本地IP地址
+local_ip = protocol.get_local_ip()
+
+# 活跃连接集合（内部维护）
+active_connections = protocol.active_connections
+3. 消息处理
+# 发送消息到目标服务器
+success, msg = await protocol.send_message(
+    target_ip,       # 目标IP地址
+    target_port,     # 目标端口
+    handle_type,     # 处理类型
+    sub_type,        # 次一级数据类型
+    content          # 消息内容
+)
+
+# 接收下一条消息
+message = await protocol.get_next_message()
+
+# 广播消息到所有活跃连接
+success, msg = await protocol.broadcast(
+    handle_type,     # 处理类型
+    sub_type,        # 次一级数据类型
+    content          # 消息内容
+)
+
+消息协议格式
+发送消息格式
+{
+    "目标IP": target_ip,          # 字符串，目标服务器IP
+    "目标端口": target_port,      # 整数，目标服务器端口
+    "处理类型": handle_type,      # 字符串，消息处理类型
+    "次一级数据类型": sub_type,   # 字符串，更具体的类型说明
+    "数据内容": content,          # 字符串，实际消息内容
+    "时间": datetime.isoformat()  # 字符串，ISO格式时间戳
+}
+接收消息格式
+{
+    "对方IP": client_ip,          # 字符串，发送方IP
+    "对方端口": client_port,      # 整数，发送方端口
+    "处理类型": handle_type,      # 字符串，消息处理类型
+    "次一级数据类型": sub_type,   # 字符串，更具体的类型说明
+    "数据内容": content,          # 字符串，实际消息内容
+    "时间": datetime.isoformat()  # 字符串，ISO格式时间戳
+}
+
+消息存储机制
+内存存储：使用列表received_messages存储消息
+磁盘存储：使用 JSON 文件data/received_messages.json存储消息
+消息获取采用 FIFO（先进先出）原则，获取后从存储中移除
+异常处理
+网络连接错误：自动捕获并返回错误信息
+消息格式错误：检测无效 JSON 并记录错误
+端口占用：启动前验证端口可用性
+连接关闭：自动处理客户端断开连接情况
+异步特性
+所有网络操作基于 asyncio 实现异步处理
+服务器启动后进入事件循环，可同时处理多个客户端连接
+消息发送和接收均为异步操作，不阻塞主线程
+该库设计遵循模块化原则，核心功能与业务逻辑分离，通过明确的接口提供通讯能力，便于后续扩展和维护。使用时需传入正确的端口参数，否则无法建立连接
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

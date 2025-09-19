@@ -1,0 +1,138 @@
+HTML 端通讯核心摘要
+核心通讯方式
+本系统采用 WebSocket 作为前端与后端的实时通讯协议，所有交互均通过 WebSocket 连接进行。
+初始化连接
+// 核心连接逻辑
+function initWebSocket(port) {
+  // 关闭已有连接
+  if (window.webSocket) {
+    window.webSocket.close();
+  }
+  
+  // 建立新连接，端口由外部传入
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsHost = window.location.hostname;
+  window.webSocket = new WebSocket(`${wsProtocol}//${wsHost}:${port}`);
+  
+  // 注册事件监听
+  window.webSocket.onopen = handleConnectionOpen;
+  window.webSocket.onmessage = handleMessageReceived;
+  window.webSocket.onerror = handleConnectionError;
+  window.webSocket.onclose = handleConnectionClose;
+}
+消息格式规范
+所有消息均采用 JSON 格式进行传输，包含以下核心字段：
+type: 消息类型（字符串），用于区分不同的操作
+data: 消息内容（对象），根据不同 type 包含不同字段
+timestamp: 时间戳（数字），消息发送的时间
+主要消息类型及交互流程
+1. 连接验证
+客户端发送:
+json
+{
+  "type": "auth",
+  "data": {
+    "clientId": "唯一客户端标识"
+  },
+  "timestamp": 1620000000000
+}
+
+服务端响应:
+{
+  "type": "auth_resp",
+  "data": {
+    "success": true,
+    "message": "认证成功"
+  },
+  "timestamp": 1620000001000
+}
+
+2. 命令发送
+客户端发送:
+json
+{
+  "type": "command",
+  "data": {
+    "cmd": "具体命令",
+    "params": { /* 命令参数 */ }
+  },
+  "timestamp": 1620000002000
+}
+
+服务端响应:
+json
+{
+  "type": "command_resp",
+  "data": {
+    "cmd": "对应命令",
+    "success": true,
+    "result": { /* 命令执行结果 */ },
+    "error": null
+  },
+  "timestamp": 1620000003000
+}
+
+3. 服务端主动推送
+{
+  "type": "push",
+  "data": {
+    "event": "事件名称",
+    "content": { /* 推送内容 */ }
+  },
+  "timestamp": 1620000004000
+}
+
+消息处理核心逻辑
+javascript
+// 消息接收处理
+function handleMessageReceived(event) {
+  try {
+    const message = JSON.parse(event.data);
+    
+    // 根据消息类型分发处理
+    switch (message.type) {
+      case 'auth_resp':
+        handleAuthResponse(message.data);
+        break;
+      case 'command_resp':
+        handleCommandResponse(message.data);
+        break;
+      case 'push':
+        handleServerPush(message.data);
+        break;
+      // 其他消息类型处理...
+      default:
+        console.warn('未知消息类型:', message.type);
+    }
+  } catch (error) {
+    console.error('消息解析错误:', error);
+  }
+}
+
+// 发送消息的通用方法
+function sendMessage(type, data) {
+  if (!window.webSocket || window.webSocket.readyState !== WebSocket.OPEN) {
+    console.error('WebSocket连接未建立');
+    return false;
+  }
+  
+  const message = {
+    type,
+    data,
+    timestamp: Date.now()
+  };
+  
+  window.webSocket.send(JSON.stringify(message));
+  return true;
+}
+
+连接状态管理
+维护连接状态枚举：CONNECTING, OPEN, CLOSING, CLOSED
+实现自动重连机制，连接断开时尝试重新连接
+提供连接状态查询接口，供 UI 展示当前连接状态
+错误处理机制
+网络错误：自动重试连接
+协议错误：记录错误日志并通知用户
+认证失败：提示用户重新认证
+超时处理：对长时间未响应的命令设置超时机制
+通过以上核心规范和逻辑，前端与后端能够实现可靠的实时通讯。所有通讯均依赖于传入的端口参数进行连接，若端口不正确则无法建立连接。
