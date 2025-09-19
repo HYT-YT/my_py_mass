@@ -1,0 +1,12 @@
+import sys
+sys.path.append("绝对路径/")#注意,为目录,不为文件
+import 库文件名
+
+import sys
+sys.path.append("./本目录下的相对路径")#注意,为目录,不为文件
+import 库文件名
+
+
+
+
+欢迎库文件基础上增加新功能,欢迎修改,欢迎分享
